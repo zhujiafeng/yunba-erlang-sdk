@@ -27,6 +27,7 @@ http_get(URL, Timeout) ->
             Else
     end.
 
+-spec http_post(URL :: any(), Content :: any()) -> {ok, Response :: any()} | {error, Reason :: any()}.
 http_post(URL, Content) ->
     http_post(URL, Content, ?HTTP_TIMEOUT).
 
@@ -52,26 +53,26 @@ make_sure_binary(Data) ->
     end.
 
 %% Internal API
+%%return {ok,Body} | {error, connection_closing} | {error, Reason} |
 http_post_request(URL, Content, Timeout) ->
     try ibrowse:send_req(URL,[{"Content-type", "application/json"}],post, Content, [], Timeout) of
         {ok, ReturnCode, _Headers, Body} ->
             case ReturnCode of
                 "200" ->
-                    %io:format("http post client ~p succeed ~p", [URL, Body]),
                     {ok, Body};
                 _Other ->
                     io:format("http post client ~p not return 200 ~p ~p~n", [URL, Content, _Other]),
-                    {error, Body}
+                    {error, {ReturnCode, Body}}
             end;
         {error, connection_closing} ->
             {error, connection_closing};
         {error, REASON} ->
             io:format("http post client ~p failed ~p ~p~n", [URL, Content, REASON]),
-            {error, <<"http failed">>}
+            {error, [URL, Content, REASON]}
     catch
         Type:Error ->
             io:format("http post client ~p failed ~p ~p:~p~n", [URL, Content, Type, Error]),
-            {error, <<"http failed">>}
+            {error, [URL, Content, Type, Error]}
     end.
 
 http_get_request(URL, Timeout) ->
@@ -83,15 +84,15 @@ http_get_request(URL, Timeout) ->
                     {ok, Body};
                 _Other ->
                     io:format("http get client ~p not return 200 ~p~n", [URL, _Other]),
-                    {error, Body}
+                    {error, [URL, ReturnCode, Body]}
             end;
         {error, connection_closing} ->
             {error, connection_closing};
-        {error, REASON} ->
-            io:format("http get client ~p failed ~p~n", [URL, REASON]),
-            {error, <<"http failed">>}
+        {error, Reason} ->
+            io:format("http get client ~p failed ~p~n", [URL, Reason]),
+            {error, [URL, Reason]}
     catch
         Type:Error ->
             io:format("http get client ~p failed ~p:~p~n", [URL, Type, Error]),
-            {error, <<"http failed">>}
+            {error, [URL, Type, Error]}
     end.
